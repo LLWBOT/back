@@ -4,7 +4,6 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
-const fetch = require('node-fetch');
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -29,21 +28,13 @@ const UserSchema = new mongoose.Schema({
 const User = mongoose.model('User', UserSchema);
 
 app.post('/api/signup', async (req, res) => {
-  const { email, password, recaptchaResponse } = req.body;
+  const { email, password } = req.body; // Only expecting email and password
 
-  if (!email || !password || !recaptchaResponse) {
-    return res.status(400).json({ message: 'Please provide all information, including the captcha.' });
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Please provide both email and password.' });
   }
 
   try {
-    const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaResponse}`;
-    const verificationResponse = await fetch(verificationUrl, { method: 'POST' });
-    const verificationData = await verificationResponse.json();
-
-    if (!verificationData.success) {
-      return res.status(400).json({ message: 'Invalid captcha.' });
-    }
-
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: 'Email already exists.' });
