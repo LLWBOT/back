@@ -21,6 +21,7 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
   .catch(err => console.error('Could not connect to MongoDB', err));
 
 const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true }, // Added username field
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true }
 });
@@ -28,20 +29,25 @@ const UserSchema = new mongoose.Schema({
 const User = mongoose.model('User', UserSchema);
 
 app.post('/api/signup', async (req, res) => {
-  const { email, password } = req.body; // Only expecting email and password
+  const { username, email, password } = req.body; // Expecting username in the body
 
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Please provide both email and password.' });
+  if (!username || !email || !password) {
+    return res.status(400).json({ message: 'Please provide a username, email, and password.' });
   }
 
   try {
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    const existingUserByEmail = await User.findOne({ email });
+    if (existingUserByEmail) {
       return res.status(409).json({ message: 'Email already exists.' });
     }
 
+    const existingUserByUsername = await User.findOne({ username });
+    if (existingUserByUsername) {
+      return res.status(409).json({ message: 'Username already exists.' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ email, password: hashedPassword });
+    const newUser = new User({ username, email, password: hashedPassword }); // Save username
     await newUser.save();
 
     res.status(201).json({ message: 'User created successfully!' });
