@@ -4,20 +4,23 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
+const fetch = require('node-fetch');
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors()); // Enable CORS for all origins (configure as needed for production)
+const corsOptions = {
+  origin: 'https://exampleofty.netlify.app',
+  methods: 'POST',
+  allowedHeaders: 'Content-Type',
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
-// MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('Could not connect to MongoDB', err));
 
-// User Schema
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true }
@@ -25,15 +28,22 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', UserSchema);
 
-// Signup Endpoint
 app.post('/api/signup', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, recaptchaResponse } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Please provide both email and password.' });
+  if (!email || !password || !recaptchaResponse) {
+    return res.status(400).json({ message: 'Please provide all information, including the captcha.' });
   }
 
   try {
+    const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaResponse}`;
+    const verificationResponse = await fetch(verificationUrl, { method: 'POST' });
+    const verificationData = await verificationResponse.json();
+
+    if (!verificationData.success) {
+      return res.status(400).json({ message: 'Invalid captcha.' });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: 'Email already exists.' });
