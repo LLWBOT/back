@@ -21,14 +21,14 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
   .catch(err => console.error('Could not connect to MongoDB', err));
 
 const UserSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true }, // Assuming you kept the username
+  username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true }
 });
 
 const User = mongoose.model('User', UserSchema);
 
-// Signup route (assuming you want to keep this as is)
+// Signup route
 app.post('/api/signup', async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -58,7 +58,7 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
-// Signin route
+// Signin route (updated to send username)
 app.post('/api/signin', async (req, res) => {
   const { email, password } = req.body;
 
@@ -70,13 +70,13 @@ app.post('/api/signin', async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password.' }); // 401 Unauthorized for login failures
+      return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (isPasswordValid) {
-      return res.status(200).json({ message: 'Logged in successfully!' }); // 200 OK for successful login
+      return res.status(200).json({ message: 'Logged in successfully!', username: user.username }); // Send username in the response
     } else {
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
